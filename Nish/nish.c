@@ -1,5 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -109,6 +111,7 @@ int lsh_cd(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
 int lsh_list(char **args);
+int lsh_cdmk(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -117,14 +120,16 @@ char *builtin_str[] = {
   "cd",
   "help",
   "exit",
-  "list"
+  "list",
+  "cdmk"
 };
 
 int (*builtin_func[]) (char **) = {
   &lsh_cd,
   &lsh_help,
   &lsh_exit,
-  &lsh_list
+  &lsh_list,
+  &lsh_cdmk
 };
 
 int lsh_num_builtins() {
@@ -146,7 +151,35 @@ int lsh_cd(char **args){
   return 1;
 }
 int lsh_list(char **args){
-
+const char *path = args[1] ? args[1] : ".";
+DIR *dir = opendir(path);
+if (!dir){
+perror("lsh");
+return 1;
+   }
+struct dirent *entry;
+while ((entry = readdir(dir)) != NULL){
+if (entry->d_name[0] == '.') continue;
+printf("%s\n", entry->d_name);
+   }
+closedir(dir);
+return 1;
+}
+int lsh_cdmk(char **args){
+  if (args[1] == NULL){
+  fprintf(stderr, "Se esperaba argumento para \"cdmk\"\n");
+  return 1;
+  }
+  if (mkdir(args[1], 0755) != 0 && EEXIST){
+  perror("lsh: cdmk");
+  return 1;
+  }
+  if (chdir(args[1]) != 0){
+  perror("lsh: cdmk");
+  return 1;
+  }
+  printf("%s\n", args[1]);
+  return 1;
 }
 int lsh_help(char **args){
   int i;
